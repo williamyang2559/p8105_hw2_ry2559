@@ -11,3 +11,97 @@ library(tidyverse)
 library(readxl)
 library(janitor)
 ```
+
+
+## Problem 1
+
+```{r}
+subway_df = read_csv(
+  "data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv",
+  show_col_types = FALSE
+) |>
+  clean_names() |>
+  select(
+    line,
+    station_name,
+    station_latitude,
+    station_longitude,
+    route1:route11,
+    entrance_type,
+    entry,
+    vending,
+    ada
+  ) |>
+  mutate(
+  entry = entry == "YES"
+)
+```
+
+
+The cleaned subway dataset contains `r nrow(subway_df)` observations and `r ncol(subway_df)` variables. It includes station name and line, station latitude and longitude, routes served, entrance type, entry permission, vending status, and ADA compliance. I cleaned the data by standardizing variable names, selecting the requested variables, and converting the entry variable from YES/NO to a logical variable. These data are not fully tidy because the routes served are stored across multiple columns (`route1` through `route11`) rather than in a single route variable.
+
+```{r}
+station_count = subway_df |>
+  distinct(line, station_name) |>
+  nrow()
+
+station_count
+```
+```{r}
+ada_station_count = subway_df |>
+  filter(ada) |>
+  distinct(line, station_name) |>
+  nrow()
+
+ada_station_count
+```
+
+```{r}
+entry_prop_no_vending = subway_df |>
+  filter(vending == "NO") |>
+  summarize(
+    proportion = mean(entry)
+  ) |>
+  pull(proportion)
+
+entry_prop_no_vending
+```
+
+```{r}
+subway_long = subway_df |>
+  pivot_longer(
+    route1:route11,
+    names_to = "route_number",
+    names_prefix = "route",
+    values_to = "route_name",
+    values_transform = list(route_name = as.character),
+    values_drop_na = TRUE
+  ) |>
+  mutate(
+    route_number = as.integer(route_number)
+  )
+
+head(subway_long)
+```
+
+```{r}
+a_train_station_count = subway_long |>
+  filter(route_name == "A") |>
+  distinct(line, station_name) |>
+  nrow()
+
+a_train_station_count
+```
+
+```{r}
+a_train_ada_count = subway_long |>
+  filter(route_name == "A", ada) |>
+  distinct(line, station_name) |>
+  nrow()
+
+a_train_ada_count
+```
+
+There are `r station_count` distinct subway stations in the dataset, where stations are identified by both line and station name. Of these, `r ada_station_count` stations are ADA compliant. Among station entrances and exits without vending, approximately `r round(entry_prop_no_vending * 100, 1)`% allow entrance.
+
+After reorganizing the route variables into a tidy format, there are `r a_train_station_count` distinct stations that serve the A train. Of these stations, `r a_train_ada_count` are ADA compliant.
