@@ -105,3 +105,99 @@ a_train_ada_count
 There are `r station_count` distinct subway stations in the dataset, where stations are identified by both line and station name. Of these, `r ada_station_count` stations are ADA compliant. Among station entrances and exits without vending, approximately `r round(entry_prop_no_vending * 100, 1)`% allow entrance.
 
 After reorganizing the route variables into a tidy format, there are `r a_train_station_count` distinct stations that serve the A train. Of these stations, `r a_train_ada_count` are ADA compliant.
+
+
+## Problem 2
+
+```{r}
+excel_sheets("data/202610 Trash Wheel Collection Data.xlsx")
+```
+
+```{r}
+mr_trash = read_excel(
+  "data/202610 Trash Wheel Collection Data.xlsx",
+  sheet = "Mr. Trash Wheel",
+  range = "A2:N743"
+) |>
+  clean_names() |>
+  filter(!is.na(dumpster)) |>
+  mutate(
+    sports_balls = as.integer(round(sports_balls)),
+    trash_wheel = "Mr. Trash Wheel"
+  )
+
+dim(mr_trash)
+```
+
+```{r}
+professor_trash = read_excel(
+  "data/202610 Trash Wheel Collection Data.xlsx",
+  sheet = "Professor Trash Wheel",
+  range = "A2:M140"
+) |>
+  clean_names() |>
+  filter(!is.na(dumpster)) |>
+  mutate(
+    plastic_bottles = na_if(as.character(plastic_bottles), "dive"),
+    plastic_bottles = as.numeric(plastic_bottles),
+    trash_wheel = "Professor Trash Wheel"
+  )
+
+dim(professor_trash)
+```
+
+```{r}
+gwynnda_trash = read_excel(
+  "data/202610 Trash Wheel Collection Data.xlsx",
+  sheet = "Gwynnda the Good Wheel of the W",
+  range = cell_limits(c(2, 1), c(NA, 12))
+) |>
+  clean_names() |>
+  filter(!is.na(dumpster)) |>
+  mutate(
+    trash_wheel = "Gwynnda"
+  )
+
+dim(gwynnda_trash)
+```
+
+```{r}
+trash_wheel_df = bind_rows(
+  mr_trash |> mutate(year = as.integer(year)),
+  professor_trash |> mutate(year = as.integer(year)),
+  gwynnda_trash |> mutate(year = as.integer(year))
+)
+
+dim(trash_wheel_df)
+```
+
+```{r}
+professor_total_weight = trash_wheel_df |>
+  filter(trash_wheel == "Professor Trash Wheel") |>
+  summarize(
+    total_weight = sum(weight_tons, na.rm = TRUE)
+  ) |>
+  pull(total_weight)
+
+professor_total_weight
+```
+
+
+```{r}
+gwynnda_cigarette_butts = trash_wheel_df |>
+  filter(
+    trash_wheel == "Gwynnda",
+    year == 2022,
+    month == "June"
+  ) |>
+  summarize(
+    total_butts = sum(cigarette_butts, na.rm = TRUE)
+  ) |>
+  pull(total_butts)
+
+gwynnda_cigarette_butts
+```
+
+The combined Trash Wheel dataset contains `r nrow(trash_wheel_df)` observations and `r ncol(trash_wheel_df)` variables. The data include information on the date of each dumpster collection, weight and volume of trash collected, counts of different types of litter such as plastic bottles, polystyrene, cigarette butts, glass bottles, plastic bags, wrappers, and sports balls, as well as the Trash Wheel responsible for each collection. I imported and cleaned the three Trash Wheel datasets separately, removed non-data rows, standardized variable names and types, and then combined them into a single tidy dataset.
+
+For the available data, Professor Trash Wheel collected a total of `r professor_total_weight` tons of trash. Gwynnda collected `r format(gwynnda_cigarette_butts, big.mark = ",", scientific = FALSE)` cigarette butts in June 2022.
